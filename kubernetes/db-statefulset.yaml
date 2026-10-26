@@ -1,0 +1,75 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minipay-db
+  namespace: minipay
+spec:
+  serviceName: minipay-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minipay-db
+  template:
+    metadata:
+      labels:
+        app: minipay-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: minipay
+            - name: POSTGRES_USER
+              value: minipay
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minipay-secrets
+                  key: DB_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "minipay"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: db-init
+              mountPath: /docker-entrypoint-initdb.d/001-schema.sql
+              subPath: 001-schema.sql
+      volumes:
+        - name: db-init
+          configMap:
+            name: minipay-db-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minipay-db
+  namespace: minipay
+spec:
+  selector:
+    app: minipay-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None   # headless service for StatefulSet

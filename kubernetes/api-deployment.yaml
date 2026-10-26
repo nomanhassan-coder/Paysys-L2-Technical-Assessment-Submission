@@ -1,0 +1,91 @@
+---
+# Fixed version of starter/kubernetes/broken-api.yaml
+# Fixes:
+#   1. Service selector: minipay-backend → minipay-api
+#   2. readinessProbe port: 8081 → 5000
+#   3. Service targetPort: 8081 → 5000
+#   4. Added resource limits, Secrets, ConfigMap refs, PDB
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minipay-api
+  namespace: minipay
+  labels:
+    app: minipay-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: minipay-api
+  template:
+    metadata:
+      labels:
+        app: minipay-api
+    spec:
+      containers:
+        - name: api
+          image: minipay-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: minipay-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minipay-secrets
+                  key: DB_PASSWORD
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minipay-secrets
+                  key: API_KEY
+          readinessProbe:            # FIX: was port 8081 (wrong)
+            httpGet:
+              path: /health/ready
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minipay-api
+  namespace: minipay
+spec:
+  selector:
+    app: minipay-api              # FIX: was minipay-backend (selector mismatch)
+  ports:
+    - port: 80
+      targetPort: 5000            # FIX: was 8081 (wrong port)
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: minipay-api-pdb
+  namespace: minipay
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: minipay-api
