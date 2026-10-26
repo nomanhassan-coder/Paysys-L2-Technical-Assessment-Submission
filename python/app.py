@@ -287,13 +287,31 @@ def get_payment(transaction_ref: str):
 # ---------------------------------------------------------------------------
 UI_PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>MiniPay {{ title }}</title>
-<style>body{font-family:sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem}
-nav a{margin-right:1rem}.error{color:#a00}.success{color:#176b2c}
-label{display:block;margin:.75rem 0}input{display:block;padding:.45rem;width:100%;max-width:24rem}
-button{padding:.5rem 1rem}</style></head>
-<body><header><h1>MiniPay</h1><nav><a href="/ui">Search</a>
-<a href="/ui/payments/new">New payment</a><a href="/ui/login">Login</a></nav></header>
-<main>{{ body|safe }}</main></body></html>"""
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}
+.shell{max-width:980px;margin:0 auto;padding:2rem 1.25rem}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:2rem}
+.brand{display:flex;align-items:center;gap:.7rem}.brand-mark{display:grid;place-items:center;width:2.5rem;height:2.5rem;border-radius:.75rem;background:#2563eb;color:#fff;font-weight:800}
+h1{font-size:1.35rem;margin:0}nav{display:flex;gap:.5rem;flex-wrap:wrap}
+nav a{color:#334155;text-decoration:none;padding:.55rem .8rem;border-radius:.55rem;font-weight:600}
+nav a:hover,nav a:focus{background:#e2e8f0;color:#1d4ed8}
+main{background:#fff;border:1px solid #e2e8f0;border-radius:1rem;padding:2rem;box-shadow:0 12px 30px rgba(15,23,42,.06)}
+.eyebrow{color:#2563eb;font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:0 0 .5rem}
+h2{font-size:1.65rem;margin:.25rem 0 .5rem}p{color:#64748b;line-height:1.55}
+.form-card{max-width:560px}.field{margin:1rem 0}label{display:block;color:#334155;font-size:.9rem;font-weight:700;margin-bottom:.4rem}
+input{display:block;width:100%;padding:.75rem .85rem;border:1px solid #cbd5e1;border-radius:.55rem;background:#fff;color:#172033;font-size:1rem}
+input:focus{outline:3px solid #bfdbfe;border-color:#2563eb}
+button{border:0;border-radius:.55rem;padding:.75rem 1rem;background:#2563eb;color:#fff;font-size:.95rem;font-weight:700;cursor:pointer}
+button:hover,button:focus{background:#1d4ed8}.error,.success{margin:1rem 0;padding:.8rem 1rem;border-radius:.55rem;font-weight:600}
+.error{color:#991b1b;background:#fef2f2;border:1px solid #fecaca}.success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}
+.search-result{margin-top:1.5rem;padding:1rem;border-radius:.7rem;background:#f8fafc;border:1px solid #e2e8f0}
+pre{white-space:pre-wrap;overflow:auto;color:#334155}
+@media(max-width:640px){.shell{padding:1rem}.header{align-items:flex-start}header{display:block}nav{margin-top:1rem}main{padding:1.25rem}}
+</style></head>
+<body><div class="shell"><header><div class="brand"><div class="brand-mark">M</div><h1>MiniPay</h1></div>
+<nav><a href="/ui">Search</a><a href="/ui/payments/new">New payment</a><a href="/ui/login">Login</a></nav></header>
+<main>{{ body|safe }}</main></div></body></html>"""
 
 
 def _ui(body: str, title: str = "Operator Console"):
@@ -315,10 +333,11 @@ def ui_home():
             result = f"<section class='search-result' data-testid='search-result'><h2>Transaction found</h2><pre>{payload}</pre></section>"
         else:
             result = "<section class='search-result' data-testid='search-result'><p>Transaction not found.</p></section>"
-    body = f"""<h2>Find a transaction</h2>
-    <form method="get"><label for="transaction-ref">Transaction ref</label>
+    body = f"""<div class="form-card"><p class="eyebrow">Operations console</p><h2>Find a transaction</h2>
+    <p>Search by transaction reference to inspect payment status and processing details.</p>
+    <form method="get"><div class="field"><label for="transaction-ref">Transaction ref</label>
     <input id="transaction-ref" name="transaction_ref" placeholder="Transaction ref" required>
-    <button type="submit">Search</button></form>{result}"""
+    </div><button type="submit">Search transaction</button></form>{result}</div>"""
     return _ui(body)
 
 
@@ -332,10 +351,11 @@ def ui_login():
         else:
             session["api_key"] = key
             return redirect(url_for("ui_home"))
-    body = f"""<h2>Sign in</h2>{message}
-    <form method="post"><label for="api-key">API key</label>
+    body = f"""<div class="form-card"><p class="eyebrow">Secure access</p><h2>Sign in</h2>
+    <p>Use your MiniPay API key to access operator actions.</p>{message}
+    <form method="post"><div class="field"><label for="api-key">API key</label>
     <input id="api-key" name="api_key" type="password" aria-label="API key" required>
-    <button type="submit">Sign in</button></form>"""
+    </div><button type="submit">Sign in</button></form></div>"""
     return _ui(body, "Login")
 
 
@@ -366,11 +386,12 @@ def ui_new_payment():
                     message = f"<p class='error'>{payload.get('error', 'Payment could not be created.')}</p>"
             except (TypeError, ValueError):
                 message = "<p class='error'>Amount must be a positive number and customer ID must be valid.</p>"
-    body = f"""<h2>New payment</h2>{message}
-    <form method="post"><label for="customer-id">Customer ID</label>
+    body = f"""<div class="form-card"><p class="eyebrow">Payment operations</p><h2>New payment</h2>
+    <p>Create a payment request and receive a transaction reference for tracking.</p>{message}
+    <form method="post"><div class="field"><label for="customer-id">Customer ID</label>
     <input id="customer-id" name="customer_id" type="number" min="1" required>
-    <label for="amount">Amount</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" required>
-    <button type="submit">Create payment</button></form>"""
+    </div><div class="field"><label for="amount">Amount</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" required>
+    </div><button type="submit">Create payment</button></form></div>"""
     return _ui(body, "New Payment")
 
 
