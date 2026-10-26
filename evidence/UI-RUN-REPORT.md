@@ -16,6 +16,17 @@
 | Submit payment for customer `1`, amount `125.50` | Passed | Returned transaction reference `TXN-8C1F5BA56A0F` |
 | API/database health check | Passed | `{"db":"ok","status":"ok"}` |
 
+## Committed screenshots
+
+The browser validation screenshots are stored under
+[`evidence/screenshots/`](./screenshots/):
+
+- `ui-search.png`
+- `ui-login.png`
+- `ui-new-payment.png`
+- `ui-search-success.png`
+- `ui-search-not-found.png`
+
 ## Reproduction commands
 
 ```bash

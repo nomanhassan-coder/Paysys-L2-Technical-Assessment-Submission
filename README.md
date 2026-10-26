@@ -5,6 +5,19 @@
 
 ---
 
+## Git Branch and Submission Strategy
+
+- `main` contains the working assessment solution and incremental implementation
+  commits.
+- Feature and investigation work is validated locally before it is merged into
+  `main`.
+- Each submission is represented by an annotated tag such as `submission-v1.0`
+  or `submission-v1.1`.
+- A new submission tag is created only after the required tests and evidence
+  are updated; earlier tags remain available for comparison and rollback.
+
+---
+
 ## Quick Start
 
 ```bash
