@@ -54,12 +54,14 @@ Open `http://localhost:5000/ui` in a browser.
 
 ```bash
 pytest tests/ui/test_ui.py -v --base-url http://localhost:5000
+MINIPAY_API_URL=http://localhost:5000 MINIPAY_API_KEY=changeme \
+pytest tests/api/test_api.py -v
 pytest python/test_support_tool.py -v
 ```
 
-The support-tool unit suite passed with 22 tests during this validation. Full
-Playwright execution requires Chromium to be installed in the validating
-environment.
+The API integration suite passed with 20 tests and the Playwright suite passed
+with 10 tests during this validation. The support-tool unit suite passed with
+22 tests.
 
 ## CI recommendation
 
