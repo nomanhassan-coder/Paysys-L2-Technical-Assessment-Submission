@@ -390,7 +390,7 @@ def ui_new_payment():
     <p>Create a payment request and receive a transaction reference for tracking.</p>{message}
     <form method="post"><div class="field"><label for="customer-id">Customer ID</label>
     <input id="customer-id" name="customer_id" type="number" min="1" required>
-    </div><div class="field"><label for="amount">Amount</label><input id="amount" name="amount" type="number" min="0.01" step="0.01" required>
+    </div><div class="field"><label for="amount">Amount</label><input id="amount" name="amount" type="number" step="0.01" required>
     </div><button type="submit">Create payment</button></form></div>"""
     return _ui(body, "New Payment")
 

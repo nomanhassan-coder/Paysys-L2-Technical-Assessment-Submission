@@ -48,7 +48,7 @@ class TestTransactionSearch:
         page.goto("/ui")
         page.get_by_placeholder(re.compile("transaction ref", re.IGNORECASE)).fill("TXN-DOESNOTEXIST999")
         page.keyboard.press("Enter")
-        expect(page.locator("[data-testid='search-result'], .search-result, main")).to_contain_text(
+        expect(page.locator("[data-testid='search-result']")).to_contain_text(
             re.compile("not found|no results|404", re.IGNORECASE)
         )
 
