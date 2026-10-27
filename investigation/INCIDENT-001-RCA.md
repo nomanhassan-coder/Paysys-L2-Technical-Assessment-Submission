@@ -38,7 +38,15 @@ curl -H "X-Api-Key: changeme" "http://localhost:5000/api/payments/TXN'TEST"
 
 ## Evidence Gathered
 
-No production log sample is included in this workspace; runtime evidence must be captured from stdout using `kubectl logs` or the local process log configuration.
+The deliberate before-and-after capture is committed in
+[`evidence/incident-001-reproduction.txt`](../evidence/incident-001-reproduction.txt).
+It was run against the local PostgreSQL 15 container and Gunicorn API on
+2026-10-27.
+
+The defective interpolated query fails with a PostgreSQL syntax error when the
+reference contains an apostrophe. The fixed parameterized query completes
+successfully and returns no rows. The API rejects the same reference at the
+validation boundary with HTTP 400, before executing a database lookup.
 
 ---
 
@@ -55,7 +63,12 @@ No production log sample is included in this workspace; runtime evidence must be
 
 ## Root Cause
 
-The relevant lookup uses a parameterised query and validates the reference before querying. This prevents SQL syntax errors and injection.
+The reproduced defect was caused by interpolating an untrusted reference into
+SQL. An apostrophe terminates the SQL string literal, producing a syntax error
+and creating an injection risk.
+
+The submitted lookup validates the reference before querying and uses a
+parameterized query. This prevents SQL syntax errors and injection.
 
 ---
 
@@ -95,3 +108,7 @@ curl http://localhost:5000/api/payments/TXN000123
 # Capture this after a real run; do not treat an unexecuted soak as evidence.
 kubectl logs -n minipay deploy/minipay-api --since=30m | grep -c "ERROR" || true
 ```
+
+The captured reproduction demonstrates both layers of protection: invalid
+references are rejected by the API, and database lookups use bound parameters
+even when called directly.

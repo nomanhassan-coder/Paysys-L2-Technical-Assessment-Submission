@@ -1,0 +1,23 @@
+Incident-001 deliberate reproduction
+Run date: 2026-10-27
+Environment: PostgreSQL 15 container minipay-postgres; Gunicorn API on localhost:5000
+
+CASE=BEFORE defect: interpolated SQL
+QUERY=SELECT id FROM transactions WHERE transaction_ref = 'TXN'TEST'
+ERROR:  syntax error at or near "TEST"
+LINE 1: ...ECT id FROM transactions WHERE transaction_ref = 'TXN'TEST';
+                                                                 ^
+EXIT=1
+
+CASE=AFTER fix: parameterized SQL
+PREPARE
+ id
+----
+(0 rows)
+EXIT=0
+
+CASE=API boundary validation
+HTTP/1.1 400 BAD REQUEST
+Content-Type: application/json
+
+{"error":"Invalid transaction reference format"}
