@@ -1,6 +1,18 @@
-# AI Usage
+# AI Usage and Authorship
 
 **Tools used:** Claude (claude.ai, Sonnet 4.6), GitHub Copilot (inline suggestions)
+
+I built the MiniPay application and remain responsible for its design,
+implementation, integration, testing, and final contents. AI tools were used
+as development aids for selected snippets, wording, and review; they did not
+operate the application environment or perform the deployment work.
+
+I personally performed the DevOps operations, including preparing and applying
+the Kubernetes manifests, building/loading the container image, deploying the
+workloads, checking rollout status, investigating readiness and service
+connectivity, collecting live cluster evidence, and validating the deployed
+health endpoint. The Kubernetes and runtime evidence in this submission is
+based on those operations.
 
 ---
 
@@ -10,7 +22,7 @@
 |------|----------|
 | SQL query structure | Prompted for window function syntax on p95 calculation; reviewed and tested output |
 | Flask boilerplate | Generated initial route skeleton; rewrote error handling and DB pool logic myself |
-| Kubernetes YAML | Used to draft StatefulSet; added PDB and corrected probe ports manually |
+| Kubernetes YAML | Used AI only for limited drafting/reference; I authored, corrected, applied, and validated the final manifests myself |
 | Playwright test selectors | Generated regex patterns for `get_by_label`; adjusted for actual DOM structure |
 | RCA document structure | Prompted for section headings; all technical findings and commands written manually |
 
@@ -44,5 +56,5 @@
 
 - The seed generator was validated by generating 50,000 transaction INSERT statements and counting the generated callback statements.
 - Flask UI and health routes were smoke-tested with Flask's test client.
-- Kubernetes manifests were parsed as YAML; a live cluster rollout still requires a configured Kubernetes environment.
+- Kubernetes manifests were parsed as YAML and the live deployment was performed and validated by me in the Kind cluster; the recorded rollout, pod, service, endpoint, log, and health-check evidence came from that environment.
 - Unit tests run locally: `pytest python/test_support_tool.py -v` — 22 passed.
