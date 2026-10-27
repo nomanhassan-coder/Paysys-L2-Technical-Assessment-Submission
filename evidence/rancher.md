@@ -1,86 +1,140 @@
 # Rancher Evidence — MiniPay Cluster Operations
 
-> **Evidence status:** The commands below are the reproducible capture procedure. No Rancher cluster output is claimed unless it is captured during deployment.
+## Attempt status
 
----
+**Attempt date:** 2026-10-27
+**Result:** Blocked by the local environment; no Rancher or Kubernetes cluster
+was available.
 
-## Cluster / Workload Visibility
+The following checks were run from the final submission workspace:
+
+```text
+$ command -v rancher
+# no output: Rancher CLI is not installed
+
+$ command -v kubectl
+# no output: kubectl is not installed
+
+$ command -v minikube
+# no output
+
+$ command -v kind
+# no output
+
+$ curl -k -sS -m 3 -o /tmp/rancher-response -w 'HTTP %{http_code}\n' https://localhost/v3
+curl: (7) Failed to connect to localhost port 443 after 0 ms: Could not connect to server
+HTTP 000
+
+$ curl -k -sS -m 3 -o /tmp/rancher-response -w 'HTTP %{http_code}\n' https://localhost:8443/v3
+curl: (7) Failed to connect to localhost port 8443 after 0 ms: Could not connect to server
+HTTP 000
+
+$ curl -sS -m 3 -o /tmp/rancher-response -w 'HTTP %{http_code}\n' http://localhost:8080/v3
+curl: (7) Failed to connect to localhost port 8080 after 0 ms: Could not connect to server
+HTTP 000
+
+$ docker ps --format '{{.Names}} {{.Image}} {{.Ports}}'
+minipay-postgres postgres:15-alpine 0.0.0.0:55432->5432/tcp
+```
+
+Therefore this submission does **not** claim a Rancher deployment, pod
+readiness, rollout, or Rancher UI screenshot. The blocker is environmental:
+there is no Rancher endpoint, Kubernetes client, or local Kubernetes
+distribution available in this workspace. The PostgreSQL Docker container is
+not a Kubernetes cluster and cannot produce Rancher evidence.
+
+## Reproducible Rancher deployment procedure
+
+The following procedure is what should be run on a Rancher-managed Kubernetes
+cluster. It uses the manifests committed in [`kubernetes/`](../kubernetes/).
+Replace placeholder secret values through Rancher or a secret manager; do not
+commit real credentials.
+
+### 1. Connect to the Rancher cluster
+
+In Rancher, open **Cluster Explorer → Kubernetes → Download KubeConfig**.
+Export the downloaded configuration:
 
 ```bash
-# Cluster summary
+export KUBECONFIG=/path/to/rancher-kubeconfig.yaml
+kubectl cluster-info
 kubectl get nodes -o wide
+```
 
-# All workloads in minipay namespace
+### 2. Build and publish the API image
+
+Build [`python/Dockerfile`](../python/Dockerfile), push it to a registry
+accessible by the cluster, and update the image in
+`kubernetes/api-deployment.yaml`:
+
+```bash
+docker build -t REGISTRY/minipay-api:submission-v1.1 python/
+docker push REGISTRY/minipay-api:submission-v1.1
+```
+
+The cluster nodes must be able to pull this image. `minipay-api:latest` is
+usable only when the image is already loaded into the target cluster runtime.
+
+### 3. Create namespace and configuration
+
+```bash
+kubectl apply -f kubernetes/namespace.yaml
+kubectl apply -f kubernetes/configmap.yaml
+kubectl -n minipay create secret generic minipay-secrets \
+  --from-literal=DB_PASSWORD='REPLACE_WITH_REAL_PASSWORD' \
+  --from-literal=API_KEY='REPLACE_WITH_REAL_API_KEY' \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f kubernetes/db-init-configmap.yaml
+```
+
+### 4. Deploy PostgreSQL and API
+
+```bash
+kubectl apply -f kubernetes/db-statefulset.yaml
+kubectl -n minipay rollout status statefulset/minipay-db --timeout=180s
+kubectl apply -f kubernetes/api-deployment.yaml
+kubectl -n minipay rollout status deployment/minipay-api --timeout=180s
+```
+
+### 5. Capture Rancher/Kubernetes evidence
+
+Run these commands and save their real output alongside Rancher screenshots:
+
+```bash
+kubectl get nodes -o wide
 kubectl get all -n minipay
-```
-
-Review the captured output for readiness after applying the manifests. In Rancher UI, use **Cluster Explorer → Workloads → Deployments** for the same view.
-
----
-
-## Pod Status and Logs
-
-```bash
-# Pod status
 kubectl get pods -n minipay -o wide
-
-# Logs for API pods
-kubectl logs -n minipay deploy/minipay-api --tail=100 --follow
-
-# Logs from previous crashed container (if restart occurred)
-kubectl logs -n minipay <pod-name> --previous
+kubectl get svc,endpoints -n minipay
+kubectl describe deployment minipay-api -n minipay
+kubectl logs -n minipay deploy/minipay-api --tail=100
+kubectl get events -n minipay --sort-by='.lastTimestamp'
+kubectl top pods -n minipay
 ```
 
-In Rancher: **Workloads → Pods → minipay-api → ... → View Logs**
+In Rancher, capture **Cluster Explorer → Workloads → Deployments**,
+**Workloads → Pods**, the API pod logs, and the deployment resource/health
+view. Redact tokens, passwords, and private registry credentials.
 
----
+### 6. Verify the service
 
-## Configuration / Environment Inspection
+Use port-forwarding if the service has no external load balancer:
 
 ```bash
-# View ConfigMap
-kubectl describe configmap minipay-config -n minipay
-
-# Verify Secret keys exist (not values)
-kubectl get secret minipay-secrets -n minipay -o jsonpath='{.data}' | python3 -c "import sys,json; [print(k) for k in json.load(sys.stdin)]"
-
-# Describe pod to see resolved env
-kubectl describe pod <pod-name> -n minipay | grep -A5 "Environment:"
+kubectl -n minipay port-forward svc/minipay-api 5000:5000
+curl -fsS http://localhost:5000/health
 ```
 
-In Rancher: **Config → ConfigMaps** and **Config → Secrets** (values redacted in UI).
+Expected response:
 
----
+```json
+{"db":"ok","status":"ok"}
+```
 
-## Scaling and Rollout / Restart
+## Scaling and rollback commands
 
 ```bash
-# Scale up
 kubectl scale deployment minipay-api -n minipay --replicas=4
-
-# Rolling restart (picks up new image / config)
-kubectl rollout restart deployment/minipay-api -n minipay
-
-# Watch rollout
 kubectl rollout status deployment/minipay-api -n minipay
-
-# Rollback to previous version
+kubectl rollout restart deployment/minipay-api -n minipay
 kubectl rollout undo deployment/minipay-api -n minipay
 ```
-
-In Rancher: **Workloads → Deployments → minipay-api → ... → Redeploy / Edit → change replica count → Save**
-
----
-
-## Basic Resource / Health Visibility
-
-```bash
-# Resource usage (requires metrics-server)
-kubectl top pods -n minipay
-# Output depends on the target cluster and metrics-server availability.
-
-# Events (recent warnings/errors)
-kubectl get events -n minipay --sort-by='.lastTimestamp' | tail -20
-```
-
-In Rancher: **Cluster → Monitoring** (if Prometheus/Grafana installed via Rancher Apps) shows CPU/memory graphs per pod.
